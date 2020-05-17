@@ -5,6 +5,7 @@ const passport = require("passport");
 const ensureLogin = require("connect-ensure-login");
 
 const User = require("../models/User.model.js");
+const Room = require("../models/room.js");
 
 // Add bcrypt to encrypt passwords
 const bcrypt = require("bcrypt");
@@ -68,6 +69,47 @@ router.post("/login", passport.authenticate("local", {
 router.get("/login", (req, res, next) => {
   res.render("auth/login", { "message": req.flash("error") });
 
+});
+
+router.get('/private', ensureAuthenticated, (req, res) => {
+  res.render('private', {user: req.user});
+});
+
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  } else {
+    res.redirect('/login')
+  }
+}
+
+router.post('/rooms', ensureAuthenticated, (req, res, next) => {
+  const newRoom = new Room ({
+    name:  req.body.name,
+    url:  req.body.room,
+    owner: req.user._id   // <-- we add the user ID
+  });
+
+  newRoom.save ((err) => {
+    if (err) { return next(err); }
+    else {
+      res.redirect('/rooms');
+    }
+  })
+});
+
+router.get('/rooms', ensureAuthenticated, (req, res, next) => {
+
+  Room.find({owner: req.user._id}, (err, myRooms) => {
+    if (err) { return next(err); }
+
+    res.render('rooms', { rooms: myRooms });
+  });
+
+});
+
+router.get('/reservation', ensureAuthenticated, (req, res) => {
+  res.render('reservation', {user: req.user._id});
 });
 
 router.get("/logout", (req, res) => {
